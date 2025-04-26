@@ -10,6 +10,9 @@ import com.google.android.gms.maps.SupportMapFragment
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.MarkerOptions
 import br.edu.utfpr.usandogps_pos2025.databinding.ActivityMapsBinding
+import java.io.BufferedReader
+import java.io.InputStreamReader
+import java.net.URL
 
 class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
 
@@ -45,19 +48,43 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
         val latitude = intent.getDoubleExtra( "latitude" , 0.0 )
         val longitude = intent.getDoubleExtra( "longitude", 0.0  )
 
-        val msgRetorno = recuperaEndereco( latitude, longitude )
+        recuperaEndereco( latitude, longitude )
 
-        val local = LatLng(latitude, longitude )
-        mMap.addMarker(MarkerOptions().position(local).title( msgRetorno ) )
-        mMap.moveCamera(CameraUpdateFactory.newLatLng(local))
 
-        mMap.setMapType( GoogleMap.MAP_TYPE_SATELLITE )
     }
 
-    fun recuperaEndereco( latitude : Double, longitude : Double ) : String {
-        val endereco = "https://maps.googleapis.com/maps/api/geocode/xml?latlng=${latitude},${longitude}&key=AIzaSyCMzWccWPPD5Q8mKmyk0AVx3e-_SgTakpA"
+    fun recuperaEndereco( latitude : Double, longitude : Double ) {
+        Thread {
+            val endereco = "https://maps.googleapis.com/maps/api/geocode/xml?latlng=${latitude},${longitude}&key=AIzaSyCMzWccWPPD5Q8mKmyk0AVx3e-_SgTakpA"
 
+            val url = URL( endereco )
+            val urlConnection = url.openConnection()
 
-        return ""
+            val inputStream = urlConnection.getInputStream()
+            val entrada = BufferedReader( InputStreamReader( inputStream ) )
+
+            val saida = StringBuilder()
+
+            var linha = entrada.readLine()
+
+            while ( linha != null ) {
+                saida.append( linha )
+                linha = entrada.readLine()
+            }
+
+            val rua = saida.substring(
+                saida.indexOf( "<formatted_address>" ) + 19,
+                saida.indexOf( "</formatted_address>")
+            )
+
+            runOnUiThread {
+                val local = LatLng(latitude, longitude )
+                mMap.addMarker(MarkerOptions().position(local).title( rua ) )
+                mMap.moveCamera(CameraUpdateFactory.newLatLng(local))
+
+                mMap.setMapType( GoogleMap.MAP_TYPE_SATELLITE )
+            }
+
+        }.start()
     }
 }
